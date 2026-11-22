@@ -31,3 +31,7 @@ build-log*.txt
 rebuild-log*.txt
 deploy-upgrade.log
 
+
+# local upgrade notes may contain environment-specific paths/IPs
+UPGRADE-*.md
+
