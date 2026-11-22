@@ -48,27 +48,25 @@ AutoUpdateChecker::AutoUpdateChecker(QObject *parent) :
 
 bool AutoUpdateChecker::supportsInAppUpdate() const
 {
-    return m_PortableUpdateInstaller->supportsInAppUpdate();
+    // uu-lite: official in-app updates would overwrite this modified build.
+    return false;
 }
 
 bool AutoUpdateChecker::supportsUpdateCheck() const
 {
-#if defined(Q_OS_WIN32) || defined(Q_OS_DARWIN) || defined(STEAM_LINK) || defined(APP_IMAGE)
-    return true;
-#else
+    // uu-lite: update checks are disabled for this fork.
     return false;
-#endif
 }
 
 void AutoUpdateChecker::installUpdate(QString url)
 {
-    const QString expectedDigest = url == m_UpdateDownloadUrl ? m_UpdateAssetDigest : QString();
-    m_PortableUpdateInstaller->installUpdate(url, expectedDigest);
+    Q_UNUSED(url);
+    // uu-lite: updates are disabled.
 }
 
 void AutoUpdateChecker::start()
 {
-    checkForUpdates();
+    // uu-lite: no automatic startup update check.
 }
 
 bool AutoUpdateChecker::checkForUpdates()
@@ -397,3 +395,4 @@ void AutoUpdateChecker::handleUpdateCheckRequestFinished(QNetworkReply* reply)
         fail();
     }
 }
+

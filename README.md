@@ -22,6 +22,7 @@ Moonlight V+ for PC 是基于 [moonlight-stream/moonlight-qt](https://github.com
 - **自动配对**：通过面板 `pair_accept` / `pair_pin` 完成。
 - **Tailscale 直连发现**：支持 tailnet 主机发现与直连路径。
 - **保留上游 v6.5.7 功能**：包括新的鼠标模式/光标交互。
+- **禁用官方更新检查/应用内更新**：避免误触把改版覆盖回官方版本。
 
 ### 说明
 
@@ -206,4 +207,5 @@ Moonlight V+ for PC 的改动优先围绕 Foundation Sunshine 协同能力、桌
 - [Moonlight Weblate](https://hosted.weblate.org/projects/moonlight/moonlight-qt/)
 
 感谢 Moonlight、Sunshine 以及相关开源依赖项目的长期维护。
+
 

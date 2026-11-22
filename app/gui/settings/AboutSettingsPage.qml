@@ -155,6 +155,7 @@ Column {
             Column {
                 width: parent.width
                 spacing: Theme.spaceSm
+                visible: AutoUpdateChecker.supportsUpdateCheck()
 
                 Text {
                     text: qsTr("Check for updates")
@@ -278,3 +279,4 @@ Column {
     }
 
 }
+
