@@ -27,7 +27,7 @@ Moonlight V+ for PC 是基于 [moonlight-stream/moonlight-qt](https://github.com
 ### 说明
 
 - 本仓库不包含任何面板 IP、设备 secret、Auth Key 或本机配置文件。
-- 构建、部署和产物说明见 [`UPGRADE-6.5.7.md`](UPGRADE-6.5.7.md) 与 [`UU-LITE.md`](UU-LITE.md)。
+- 构建、部署和产物说明见 [`UU-LITE.md`](UU-LITE.md)。
 
 ## 下载
 
@@ -207,5 +207,6 @@ Moonlight V+ for PC 的改动优先围绕 Foundation Sunshine 协同能力、桌
 - [Moonlight Weblate](https://hosted.weblate.org/projects/moonlight/moonlight-qt/)
 
 感谢 Moonlight、Sunshine 以及相关开源依赖项目的长期维护。
+
 
 
