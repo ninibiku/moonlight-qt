@@ -24,3 +24,10 @@ tests/*/release/
 projects/
 __pycache__/
 *.pyc
+
+# uu-lite: never commit local clean-up backups or build logs
+backup-*/
+build-log*.txt
+rebuild-log*.txt
+deploy-upgrade.log
+
