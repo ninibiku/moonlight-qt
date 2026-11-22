@@ -1,0 +1,143 @@
+#pragma once
+
+#include "overlayrasterwindow.h"
+#include <QPainter>
+#include <QMouseEvent>
+#include <QSurfaceFormat>
+#include <QTouchEvent>
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <optional>
+
+#include "overlaybuttonposition.h"
+#include "overlayeventwakestate.h"
+#include "overlaywindowpolicy.h"
+
+#ifdef Q_OS_DARWIN
+class MacOverlayEventMonitor;
+#endif
+#ifdef HAVE_LINUX_DISPLAY_EVENT_MONITOR
+class LinuxDisplayEventMonitor;
+#endif
+
+/**
+ * OverlayMenuButton - A small floating button rendered by the OS compositor,
+ * positioned inside the streaming window. It defaults to the top-right and
+ * remembers a device-local relative position after the user drags it.
+ *
+ * When clicked, triggers a callback to open the overlay menu.
+ * Semi-transparent when idle, fully opaque on hover.
+ * Independent of D3D11/SDL rendering pipeline.
+ */
+class OverlayMenuButton : public OverlayRasterWindow
+{
+    Q_OBJECT
+
+public:
+    // Position is global for detached windows and parent-local for child windows.
+    using ClickCallback =
+        std::function<void(const QPoint& pointerPosition, bool closeWhenPointerOutside)>;
+    using EventWakeCallback = std::function<void()>;
+
+    explicit OverlayMenuButton(QWindow* parent = nullptr,
+                               OverlayWindowMode windowMode = OverlayWindowMode::Detached);
+    ~OverlayMenuButton() override;
+
+    void setClickCallback(ClickCallback cb) { m_ClickCallback = std::move(cb); }
+    void setEventWakeCallback(EventWakeCallback cb);
+
+    /**
+     * Reposition the button relative to the given Qt logical parent rect,
+     * resolving a remembered relative position against the latest bounds.
+     */
+    void repositionTo(int parentX, int parentY, int parentW, int parentH);
+
+    /**
+     * Show the button inside the given parent rect.
+     */
+    void showButton(int parentX, int parentY, int parentW, int parentH);
+
+    /**
+     * Hide the button.
+     */
+    void hideButton();
+
+    // Gamescope may route pointer events for an override-redirect overlay to
+    // the SDL stream window instead of the Qt overlay window. Let the owner
+    // loop forward those events through the same interaction state machine.
+    bool handleExternalMousePress(const QPoint& globalPosition);
+    bool handleExternalMouseMove(const QPoint& globalPosition, bool leftButtonDown);
+    bool handleExternalMouseRelease(const QPoint& globalPosition);
+    bool handleExternalTouchPress(qint64 touchId, const QPoint& globalPosition);
+    bool handleExternalTouchMove(qint64 touchId, const QPoint& globalPosition);
+    bool handleExternalTouchRelease(qint64 touchId, const QPoint& globalPosition);
+
+    bool isButtonVisible() const {
+        return m_ButtonVisible.load(std::memory_order_acquire);
+    }
+
+    // Native display wakes (plus bounded Linux queue checks) service idle
+    // buttons. Active gestures keep processing between wakes.
+    bool needsEventProcessing() const;
+    void beginEventProcessing();
+    void finishEventProcessing();
+
+protected:
+    void paintOverlay(QPainter& painter) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void touchEvent(QTouchEvent* event) override;
+    bool event(QEvent* event) override;
+
+private:
+#ifdef Q_OS_WIN32
+    struct NativeEventMonitor;
+#endif
+
+    enum class InputSource { None, Mouse, Touch };
+
+    void drawCrescentMoon(QPainter& p, qreal cx, qreal cy, qreal radius);
+    QPoint clampToParent(const QPoint& position) const;
+    void beginInteraction(InputSource source, const QPoint& globalPosition);
+    void updateInteraction(const QPoint& globalPosition);
+    void finishInteraction(const QPoint& globalPosition);
+    void cancelInteraction();
+    void requestEventProcessing();
+    void requestButtonUpdate();
+#if defined(Q_OS_WIN32) || defined(Q_OS_DARWIN) || \
+        defined(HAVE_LINUX_DISPLAY_EVENT_MONITOR)
+    void ensureNativeEventMonitor();
+    void detachNativeEventMonitor();
+#endif
+
+    ClickCallback m_ClickCallback;
+    EventWakeCallback m_EventWakeCallback;
+    mutable std::mutex m_EventWakeCallbackMutex;
+    OverlayEventWakeState m_EventWakeState;
+    bool m_Hovered;
+    std::atomic_bool m_ButtonVisible;
+    bool m_Dragging;
+    InputSource m_InputSource;
+    int m_TouchPointId;
+    qint64 m_ExternalTouchId = -1;
+    QPoint m_PressGlobalPosition;
+    QPoint m_WindowPositionAtPress;
+    QRect m_ParentGeometry;
+    OverlayButtonPositionStore m_PositionStore;
+    std::optional<QPointF> m_NormalizedPosition;
+    OverlayWindowMode m_WindowMode;
+#ifdef Q_OS_WIN32
+    std::unique_ptr<NativeEventMonitor> m_NativeEventMonitor;
+#elif defined(Q_OS_DARWIN)
+    std::unique_ptr<MacOverlayEventMonitor> m_NativeEventMonitor;
+#elif defined(HAVE_LINUX_DISPLAY_EVENT_MONITOR)
+    std::unique_ptr<LinuxDisplayEventMonitor> m_NativeEventMonitor;
+#endif
+
+    // Button size (logical pixels)
+    static constexpr int kButtonSize = 36;
+    static constexpr int kMargin = 10;  // margin from window edge
+};

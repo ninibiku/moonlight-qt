@@ -1,0 +1,64 @@
+---
+name: Build - Steam Link
+permissions:
+  contents: read
+
+on:
+  # 目前没有别的 workflow 调用这一份（发布走 build.yml），加上手动触发至少让它
+  # 可以被单独跑一次验证，而不是躺在仓库里永远不执行。
+  workflow_dispatch:
+    inputs:
+      ci_version:
+        required: false
+        default: ''
+        type: string
+  workflow_call:
+    inputs:
+      ci_version:
+        required: true
+        type: string
+
+jobs:
+  build:
+    env:
+      CI_VERSION: ${{ inputs.ci_version }}
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Checkout Steam Link SDK
+        uses: actions/checkout@v5
+        with:
+          repository: ValveSoftware/steamlink-sdk
+          path: steamlink-sdk
+          fetch-depth: 1
+
+      - name: Resolve artifact version
+        shell: bash
+        env:
+          INPUT_CI_VERSION: ${{ inputs.ci_version }}
+        run: |
+          version="$INPUT_CI_VERSION"
+          if [[ -z "$version" ]]; then
+            version=$(python3 scripts/derive-version.py --field artifact)
+          fi
+          if [[ ! "$version" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::ci_version contains characters that are unsafe in an artifact name"
+            exit 1
+          fi
+          echo "CI_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Build binaries
+        run: STEAMLINK_SDK_PATH=$PWD/steamlink-sdk scripts/build-steamlink-app.sh
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v6
+        with:
+          name: Moonlight-VPlus-SteamLink-${{ env.CI_VERSION }}
+          path: build/installer-release/Moonlight-VPlus-SteamLink-*.zip
+          if-no-files-found: error

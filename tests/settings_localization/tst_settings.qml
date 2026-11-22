@@ -1,0 +1,93 @@
+import QtQuick
+import QtTest
+import "../../app/gui/settings"
+
+TestCase {
+    name: "SettingsLocalization"
+    width: 760
+    height: 640
+    when: windowShown
+
+    FontLoader { source: "../../app/res/fonts/Manrope-Regular.ttf" }
+    FontLoader { source: "../../app/res/fonts/Manrope-ExtraBold.ttf" }
+
+    Component {
+        id: toggleComponent
+        ToggleRow { title: "ABR"; description: "Adjust video bitrate"; checked: true }
+    }
+
+    function test_toggleAccessibleWithoutInitializationWriteback() {
+        var row = createTemporaryObject(toggleComponent, this, { width: 740 })
+        verify(row)
+        var control = row.controlContent[0]
+        compare(control.Accessible.name, row.title)
+        compare(control.Accessible.description, row.description)
+        compare(control.checked, true)
+        var emissions = 0
+        row.toggled.connect(function() { emissions++ })
+        row.checked = false
+        compare(control.checked, false)
+        compare(emissions, 0)
+    }
+
+    Component {
+        id: railComponent
+        CategoryRail {
+            height: 600
+            categories: [
+                { key: "basic", title: qsTranslate("SettingsView", "Streaming"), icon: "" },
+                { key: "advanced", title: qsTranslate("SettingsView", "Compatibility and diagnostics"), icon: "" },
+                { key: "ui", title: qsTranslate("SettingsView", "Interface"), icon: "" },
+                { key: "gamepad", title: "Gamepad Settings", icon: "" },
+                { key: "peripherals", title: "Peripherals Settings", icon: "" },
+                { key: "software", title: "Software Settings", icon: "" },
+                { key: "ecosystem", title: "AlkaidLab Ecosystem", icon: "" }
+            ]
+        }
+    }
+
+    function test_compiledChinese() {
+        compare(qsTranslate("SettingsView", "Settings"), "设置")
+        compare(qsTranslate("SettingsView", "Software Settings"), "软件设置")
+        compare(qsTranslate("SettingsView", "Interface"), "界面")
+        compare(qsTranslate("LegacySettingsPage", "Language"), "语言")
+        compare(qsTranslate("LegacySettingsPage", "Absolute mouse mode"), "绝对鼠标模式")
+        compare(qsTranslate("LegacySettingsPage", "Display remote cursor locally"), "在本地显示远程光标")
+        compare(qsTranslate("MouseModeStatus", "Press Ctrl+Alt+Shift+O to open the overlay menu."), "按 Ctrl+Alt+Shift+O 打开悬浮菜单。")
+        compare(qsTranslate("OverlayMenuPanel", "Toggle Sunshine cursor"), "切换 Sunshine 光标")
+        compare(qsTranslate("Session", "Absolute mouse mode may cause problems in games."), "绝对鼠标模式可能导致部分游戏出现问题。")
+        compare(qsTranslate("AboutSettingsPage", "About"), "关于")
+        verify(qsTranslate("OverlayMenuPanel", "Connected — select to release") !== "Connected — select to release")
+        verify(qsTranslate("StylusReplayTest", "Stylus replay stopped.") !== "Stylus replay stopped.")
+    }
+
+    function test_titlesFit_data() {
+        return [
+            { tag: "narrow-rail", railWidth: 168, compact: false },
+            { tag: "standard-rail", railWidth: 200, compact: false },
+            { tag: "horizontal-tabs", railWidth: 740, compact: true }
+        ]
+    }
+
+    function test_titlesFit(data) {
+        var rail = createTemporaryObject(railComponent, this, {
+            width: data.railWidth, compact: data.compact,
+            height: data.compact ? 46 : 600
+        })
+        verify(rail)
+        var list = rail.children[0]
+        for (var i = 0; i < rail.categories.length; ++i) {
+            rail.currentCategory = rail.categories[i].key
+            rail.ensureCurrentVisible()
+            tryVerify(function() { return list.itemAtIndex(i) !== null })
+            wait(50)
+            var row = list.itemAtIndex(i)
+            compare(row.Accessible.name, rail.categories[i].title)
+            var label = row.contentItem.children[1]
+            verify(!label.truncated, label.text + " is truncated")
+            verify(label.contentWidth <= label.width + 1, label.text + " overflows horizontally")
+            verify(label.height <= row.availableHeight + 1, label.text + " overflows vertically")
+            verify(label.x + label.width <= row.contentItem.width + 1)
+        }
+    }
+}
